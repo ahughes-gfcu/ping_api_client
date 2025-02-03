@@ -95,7 +95,7 @@ async fn main() {
                         println!("{} || Error pinging {}: {:?}", system_time, endpoint, e);
                     }
                 }
-                tokio::time::sleep(Duration::from_millis(250)).await;
+                tokio::time::sleep(Duration::from_secs(1)).await;
             }
         }));
     }
