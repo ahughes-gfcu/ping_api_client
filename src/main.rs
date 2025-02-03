@@ -45,7 +45,6 @@ fn read_endpoints() -> Vec<IpAddr> {
     } else {
         ini!("/etc/ping_api_client/config.ini")
     };
-    //let config = ini!("config.ini");
     let mut endpoints: Vec<IpAddr> = Vec::new();
     for value in config["endpoints"].clone().into_iter() {
         let endpoint_ip = value.1.unwrap();
@@ -76,13 +75,23 @@ async fn main() {
     
     let mut handles = vec![];
 
+    let config = if cfg!(target_os = "windows") {
+        ini!("C:\\ProgramData\\ping_api_client\\config.ini")
+    } else {
+        ini!("/etc/ping_api_client/config.ini")
+    };
+
+    let prom_gateway_ip = config["pushgateway"]["ip"].clone().unwrap();
+    let prom_gateway_port = config["pushgateway"]["port"].clone().unwrap();
+
+
     // Run pings concurrently for all endpoints including gateway
     for endpoint in std::iter::once(gateway).chain(endpoints) {
         let client_clone = client.clone();
         let hostname_clone = hostname.clone();
         let id = Uuid::new_v4();
 
-        let prom_gateway = format!("http://192.168.150.106:9091/metrics/job/{}", id);
+        let prom_gateway = format!("http://{}:{}/metrics/job/{}", prom_gateway_ip, prom_gateway_port, id);
 
         handles.push(task::spawn(async move {
             loop {
