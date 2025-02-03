@@ -10,15 +10,25 @@ use uuid::Uuid;
 extern crate ini;
 
 fn gather_host_gateway() -> IpAddr {
+    let output = if cfg!(target_os = "windows") {
+        Command::new("ipconfig")
+            .output()
+            .expect("Failed to execute ipconfig")
+    } else {
+        Command::new("ip")
+            .arg("route")
+            .arg("show")
+            .output()
+            .expect("Failed to execute ip route show")
+    };
 
-    // TODO: Handle Multiple gateways
-    let output = Command::new("ipconfig")
-        .output()
-        .expect("Failed to execute ipconfig");
-    
     let output_str = String::from_utf8_lossy(&output.stdout);
     
-    let gateway_regex = Regex::new(r"Default Gateway[. ]+: ([\d.]+)").unwrap();
+    let gateway_regex = if cfg!(target_os = "windows") {
+        Regex::new(r"Default Gateway[. ]+: ([\d.]+)").unwrap()
+    } else {
+        Regex::new(r"default via ([\d.]+)").unwrap()
+    };
     
     let gateway = gateway_regex
         .captures_iter(&output_str)
@@ -30,7 +40,12 @@ fn gather_host_gateway() -> IpAddr {
 }
 
 fn read_endpoints() -> Vec<IpAddr> {
-    let config = ini!("config.ini");
+    let config = if cfg!(target_os = "windows") {
+        ini!("C:\\ProgramData\\ping_api_client\\config.ini")
+    } else {
+        ini!("/etc/ping_api_client/config.ini")
+    };
+    //let config = ini!("config.ini");
     let mut endpoints: Vec<IpAddr> = Vec::new();
     for value in config["endpoints"].clone().into_iter() {
         let endpoint_ip = value.1.unwrap();
